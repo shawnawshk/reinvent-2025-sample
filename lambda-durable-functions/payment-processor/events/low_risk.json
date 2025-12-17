@@ -1,0 +1,8 @@
+{
+  "payment": {
+    "payment_id": "pay_low_risk_001",
+    "amount": 49.99,
+    "currency": "USD",
+    "customer_id": "cust_12345"
+  }
+}

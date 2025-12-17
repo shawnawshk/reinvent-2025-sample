@@ -1,0 +1,8 @@
+{
+  "payment": {
+    "payment_id": "pay_high_risk_001",
+    "amount": 9999.99,
+    "currency": "USD",
+    "customer_id": "cust_new_account"
+  }
+}

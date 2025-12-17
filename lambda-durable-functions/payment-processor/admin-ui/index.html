@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Approval Console</title>
+    <style>
+        :root {
+            --aws-squid-ink: #232f3e;
+            --aws-anchor: #1a242f;
+            --aws-smile: #ff9900;
+            --success: #10b981;
+            --success-bg: #ecfdf5;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-100); min-height: 100vh; }
+        
+        .header {
+            background: linear-gradient(135deg, var(--aws-squid-ink) 0%, var(--aws-anchor) 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-md);
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 40px; height: 40px;
+            background: var(--aws-smile);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+        }
+        .logo-text h1 { font-size: 18px; font-weight: 600; }
+        .logo-text span { font-size: 12px; color: var(--gray-400); }
+
+        .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        .config-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .config-panel input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .config-panel input:focus { outline: none; border-color: var(--aws-smile); }
+        .btn-refresh {
+            background: var(--aws-squid-ink);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-refresh:hover { background: var(--aws-anchor); }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: white;
+            padding: 6px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--gray-600);
+            transition: all 0.15s;
+        }
+        .tab:hover { background: var(--gray-50); }
+        .tab.active { background: var(--aws-squid-ink); color: white; }
+        .tab.active .badge { background: rgba(255,255,255,0.2); color: white; }
+        .badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--gray-100);
+        }
+        .tab[data-tab="pending"] .badge { background: var(--warning-bg); color: var(--warning); }
+        .tab[data-tab="completed"] .badge { background: var(--success-bg); color: var(--success); }
+        .tab[data-tab="rejected"] .badge { background: var(--danger-bg); color: var(--danger); }
+
+        /* Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+        .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .card-accent { height: 4px; }
+        .card-accent.pending { background: var(--warning); }
+        .card-accent.completed { background: var(--success); }
+        .card-accent.rejected { background: var(--danger); }
+        .card-body { padding: 16px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .payment-id {
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--gray-500);
+            background: var(--gray-100);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-badge.pending { background: var(--warning-bg); color: var(--warning); }
+        .status-badge.completed { background: var(--success-bg); color: var(--success); }
+        .status-badge.rejected { background: var(--danger-bg); color: var(--danger); }
+        .amount { font-size: 28px; font-weight: 700; color: var(--gray-900); margin-bottom: 12px; }
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-top: 1px solid var(--gray-100);
+            font-size: 13px;
+        }
+        .meta-label { color: var(--gray-500); }
+        .meta-value { color: var(--gray-700); font-weight: 500; }
+        .card-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-approve { background: var(--success); color: white; }
+        .btn-approve:hover { background: #059669; }
+        .btn-reject { background: white; color: var(--danger); border: 2px solid var(--danger); }
+        .btn-reject:hover { background: var(--danger-bg); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+        }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-title { font-size: 18px; font-weight: 600; color: var(--gray-900); margin-bottom: 8px; }
+        .empty-desc { color: var(--gray-500); }
+
+        .loading { grid-column: 1 / -1; text-align: center; padding: 60px; }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--aws-smile);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-md);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--success); color: white; }
+        .toast.error { background: var(--danger); color: white; }
+
+        @media (max-width: 640px) {
+            .config-panel { flex-direction: column; }
+            .tabs { flex-direction: column; }
+            .cards-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">💳</div>
+                <div class="logo-text">
+                    <h1>Payment Approval Console</h1>
+                    <span>Lambda Durable Functions Demo</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="config-panel">
+            <input type="text" id="apiUrl" placeholder="API Gateway URL: https://xxx.execute-api.region.amazonaws.com/prod">
+            <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
+            <button class="btn-refresh" style="background:#ef4444" onclick="clearAll()">🗑 Clear All</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="pending" onclick="switchTab('pending')">
+                ⏳ Pending <span class="badge" id="count-pending">0</span>
+            </button>
+            <button class="tab" data-tab="completed" onclick="switchTab('completed')">
+                ✓ Completed <span class="badge" id="count-completed">0</span>
+            </button>
+            <button class="tab" data-tab="rejected" onclick="switchTab('rejected')">
+                ✗ Rejected <span class="badge" id="count-rejected">0</span>
+            </button>
+        </div>
+
+        <div id="cards" class="cards-grid"></div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const apiUrlInput = document.getElementById('apiUrl');
+        const cardsContainer = document.getElementById('cards');
+        const toast = document.getElementById('toast');
+        
+        let currentTab = 'pending';
+        let allPayments = [];
+        
+        apiUrlInput.value = localStorage.getItem('apiUrl') || '';
+        apiUrlInput.addEventListener('change', () => localStorage.setItem('apiUrl', apiUrlInput.value));
+
+        const statusMap = {
+            'pending': ['AWAITING_APPROVAL'],
+            'completed': ['COMPLETED', 'APPROVED', 'CHARGED'],
+            'rejected': ['REJECTED']
+        };
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            renderCards();
+        }
+
+        function showToast(msg, type) {
+            toast.textContent = msg;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        function formatDate(ts) {
+            if (!ts) return '-';
+            return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
+        }
+
+        async function loadData() {
+            const apiUrl = apiUrlInput.value.trim();
+            if (!apiUrl) { showToast('Enter API URL', 'error'); return; }
+            
+            cardsContainer.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+            
+            try {
+                const res = await fetch(`${apiUrl}/payments`);
+                const data = await res.json();
+                allPayments = data.payments || [];
+                updateCounts();
+                renderCards();
+            } catch (e) {
+                showToast('Failed: ' + e.message, 'error');
+                cardsContainer.innerHTML = '';
+            }
+        }
+
+        function updateCounts() {
+            const counts = { pending: 0, completed: 0, rejected: 0 };
+            allPayments.forEach(p => {
+                if (statusMap.pending.includes(p.status)) counts.pending++;
+                else if (statusMap.completed.includes(p.status)) counts.completed++;
+                else if (statusMap.rejected.includes(p.status)) counts.rejected++;
+            });
+            document.getElementById('count-pending').textContent = counts.pending;
+            document.getElementById('count-completed').textContent = counts.completed;
+            document.getElementById('count-rejected').textContent = counts.rejected;
+        }
+
+        function renderCards() {
+            const filtered = allPayments.filter(p => statusMap[currentTab].includes(p.status));
+            
+            if (!filtered.length) {
+                const msgs = {
+                    pending: { icon: '✓', title: 'All caught up!', desc: 'No payments pending approval' },
+                    completed: { icon: '📭', title: 'No completed payments', desc: 'Approved payments will appear here' },
+                    rejected: { icon: '📭', title: 'No rejected payments', desc: 'Declined payments will appear here' }
+                };
+                cardsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">${msgs[currentTab].icon}</div>
+                        <div class="empty-title">${msgs[currentTab].title}</div>
+                        <div class="empty-desc">${msgs[currentTab].desc}</div>
+                    </div>`;
+                return;
+            }
+
+            cardsContainer.innerHTML = filtered.map(p => {
+                const tabClass = currentTab;
+                const risk = parseFloat(p.risk_score || 0);
+                const actions = currentTab === 'pending' ? `
+                    <div class="card-actions">
+                        <button class="btn btn-approve" onclick="handleAction('${p.payment_id}', true)">✓ Approve</button>
+                        <button class="btn btn-reject" onclick="handleAction('${p.payment_id}', false)">✗ Reject</button>
+                    </div>` : '';
+                
+                const extraMeta = currentTab === 'completed' && p.transaction_id ? 
+                    `<div class="meta-row"><span class="meta-label">Transaction</span><span class="meta-value">${p.transaction_id}</span></div>` :
+                    currentTab === 'rejected' && p.reason ?
+                    `<div class="meta-row"><span class="meta-label">Reason</span><span class="meta-value">${p.reason}</span></div>` : '';
+
+                return `
+                <div class="card" id="card-${p.payment_id}">
+                    <div class="card-accent ${tabClass}"></div>
+                    <div class="card-body">
+                        <div class="card-header">
+                            <span class="payment-id">${p.payment_id}</span>
+                            <span class="status-badge ${tabClass}">${p.status.replace('_', ' ')}</span>
+                        </div>
+                        <div class="amount">${formatCurrency(p.amount)}</div>
+                        <div class="meta-row">
+                            <span class="meta-label">Risk Score</span>
+                            <span class="meta-value">${(risk * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Created</span>
+                            <span class="meta-value">${formatDate(p.created_at)}</span>
+                        </div>
+                        ${extraMeta}
+                        ${actions}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function handleAction(paymentId, approved) {
+            const apiUrl = apiUrlInput.value.trim();
+            const card = document.getElementById(`card-${paymentId}`);
+            card.querySelectorAll('button').forEach(b => b.disabled = true);
+            
+            try {
+                const res = await fetch(`${apiUrl}/${approved ? 'approve' : 'reject'}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_id: paymentId, approved })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast(`Payment ${approved ? 'approved' : 'rejected'}`, 'success');
+                    // Reload to get actual final status from server
+                    setTimeout(() => loadData(), 1500);
+                } else {
+                    showToast(data.error || 'Failed', 'error');
+                    card.querySelectorAll('button').forEach(b => b.disabled = false);
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+                card.querySelectorAll('button').forEach(b => b.disabled = false);
+            }
+        }
+
+        if (apiUrlInput.value) loadData();
+
+        async function clearAll() {
+            if (!confirm('Delete ALL payment records? This cannot be undone.')) return;
+            const apiUrl = apiUrlInput.value.trim();
+            if (!apiUrl) { showToast('Enter API URL', 'error'); return; }
+            try {
+                const res = await fetch(`${apiUrl}/clear`, { method: 'POST' });
+                const data = await res.json();
+                showToast(`Deleted ${data.deleted} records`, 'success');
+                loadData();
+            } catch (e) {
+                showToast('Failed: ' + e.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
