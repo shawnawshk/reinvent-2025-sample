@@ -350,7 +350,9 @@
         }
 
         function renderCards() {
-            const filtered = allPayments.filter(p => statusMap[currentTab].includes(p.status));
+            const filtered = allPayments
+                .filter(p => statusMap[currentTab].includes(p.status))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             
             if (!filtered.length) {
                 const msgs = {
