@@ -61,7 +61,7 @@ Resources:
       Timeout: 60
       AutoPublishAlias: live
       DurableConfig:
-        ExecutionTimeout: 3600
+        ExecutionTimeout: 86400
         RetentionPeriodInDays: 7
       Environment:
         Variables:
