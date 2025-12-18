@@ -1,8 +1,8 @@
 ---
 name: "serverless-dev"
-displayName: "AWS Serverless Development with SAM"
-description: "Build production-ready serverless applications on AWS using SAM, Lambda, API Gateway, EventBridge, and other serverless services following AWS best practices"
-keywords: ["serverless", "lambda", "sam", "api gateway", "eventbridge", "dynamodb", "s3", "step functions", "sqs", "sns", "cloudformation", "aws"]
+displayName: "AWS Serverless Development"
+description: "Build production-ready serverless applications on AWS using AWS SAM, Lambda, API Gateway, EventBridge, and other serverless services following AWS best practices"
+keywords: ["serverless", "lambda", "sam", "api gateway", "eventbridge", "dynamodb", "s3", "step functions", "sqs", "sns", "cloudformation", "lambda durable functions", "workflow"]
 mcpServers: ["awslabs.aws-serverless-mcp-server", "aws-knowledge-mcp-server"]
 ---
 
@@ -31,6 +31,7 @@ Before building serverless applications, ensure AWS SAM CLI is installed:
 - Initializing new serverless projects → `sam-init-workflow.md`
 - Building and deploying applications → `sam-build-deploy.md`
 - Creating Lambda functions → `lambda-best-practices.md`
+- Building long-running workflows with Lambda Durable Functions → `lambda-durable-functions.md`
 - Working with API Gateway → `api-gateway-patterns.md`
 - Event-driven architectures with EventBridge, SQS, SNS → `event-driven-patterns.md`
 - DynamoDB integration → `dynamodb-patterns.md`
