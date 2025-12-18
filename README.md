@@ -5,6 +5,7 @@ This repository contains sample code and demonstrations from AWS re:Invent 2025.
 ## What's Included
 
 - **lambda-durable-functions** - Sample implementation showcasing durable execution patterns with AWS Lambda
+- **lambda-managed-instances** - Demo of Lambda Managed Instances running functions on EC2 with serverless simplicity
 
 Each sample includes its own documentation and deployment instructions.
 
