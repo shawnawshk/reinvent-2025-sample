@@ -10,7 +10,7 @@ spec:
     targetRevision: HEAD
     path: eks-capabilities/wordpress-demo/kro
   destination:
-    server: https://kubernetes.default.svc
+    name: local-cluster
     namespace: default
   syncPolicy:
     automated:
