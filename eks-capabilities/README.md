@@ -196,8 +196,59 @@ aws secretsmanager delete-secret --secret-id demo-wordpress-db-password --region
 eks-capabilities/
 ├── ENABLE_EKS_CAPABILITIES.md    # How to enable capabilities
 ├── README.md                      # This file
+├── argocd-application.yaml        # ArgoCD Application manifest
 └── wordpress-demo/
     └── kro/
         ├── wordpress-full-rgd.yaml    # ResourceGraphDefinition
         └── wordpress-instance.yaml    # Example instance
 ```
+
+## Deploy with ArgoCD
+
+### 1. Register Local Cluster
+
+```bash
+CLUSTER_ARN=$(aws eks describe-cluster --name <cluster-name> --region <region> --query 'cluster.arn' --output text)
+
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: local-cluster
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+stringData:
+  name: local-cluster
+  server: ${CLUSTER_ARN}
+  project: default
+EOF
+```
+
+### 2. Grant ArgoCD Cluster Admin Access
+
+```bash
+aws eks associate-access-policy \
+  --region <region> \
+  --cluster-name <cluster-name> \
+  --principal-arn arn:aws:iam::<account-id>:role/ArgoCDCapabilityRole \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+  --access-scope type=cluster
+```
+
+### 3. Deploy ArgoCD Application
+
+```bash
+kubectl apply -f argocd-application.yaml
+```
+
+### 4. Monitor Sync Status
+
+```bash
+kubectl get application -n argocd wordpress-demo -w
+```
+
+ArgoCD will automatically:
+- Sync the ResourceGraphDefinition and WordPressApp instance from Git
+- kro will create all 10 child resources
+- Any Git changes will be automatically synced
