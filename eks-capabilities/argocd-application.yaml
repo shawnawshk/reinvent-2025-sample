@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wordpress-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@awsgit:shawnawshk/reinvent-2025-sample.git
+    targetRevision: HEAD
+    path: eks-capabilities/wordpress-demo/kro
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
