@@ -1,0 +1,16 @@
+apiVersion: demo.eks.aws/v1alpha1
+kind: WordPressApp
+metadata:
+  name: demo-wordpress
+  namespace: default
+spec:
+  name: demo-wordpress
+  replicas: 2
+  dbInstanceClass: db.t3.micro
+  storageSize: 20
+  subnetIDs:
+    - subnet-085eb806bc56e7a52
+    - subnet-0dd139ba0cae0c356
+    - subnet-0919d84da9cbb5e4b
+  clusterName: eks-cp-demo
+  secretName: demo-wordpress-db-password

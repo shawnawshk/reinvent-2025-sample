@@ -1,0 +1,245 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: wordpressapp
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: WordPressApp
+    group: demo.eks.aws
+    spec:
+      name: string | required=true
+      replicas: integer | default=2
+      dbInstanceClass: string | default="db.t3.micro"
+      storageSize: integer | default=20
+      subnetIDs: '[]string | required=true'
+      clusterName: string | required=true
+      secretName: string | required=true
+  
+  resources:
+    # 1. IAM Policy for Secrets Manager access
+    - id: iampolicy
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Policy
+        metadata:
+          name: ${schema.spec.name}-secrets-policy
+          namespace: ${schema.metadata.namespace}
+        spec:
+          name: ${schema.spec.name}-secrets-policy
+          policyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:DescribeSecret"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-west-2:985955614379:secret:${schema.spec.secretName}-*"
+                }
+              ]
+            }
+    
+    # 2. IAM Role for Pod Identity
+    - id: iamrole
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-pod-role
+          namespace: ${schema.metadata.namespace}
+        spec:
+          name: ${schema.spec.name}-pod-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "pods.eks.amazonaws.com"
+                  },
+                  "Action": [
+                    "sts:AssumeRole",
+                    "sts:TagSession"
+                  ]
+                }
+              ]
+            }
+          policies:
+            - ${iampolicy.status.ackResourceMetadata.arn}
+    
+    # 3. Kubernetes ServiceAccount
+    - id: serviceaccount
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: ${schema.spec.name}-sa
+          namespace: ${schema.metadata.namespace}
+    
+    # 4. EKS Pod Identity Association
+    - id: podidentity
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: PodIdentityAssociation
+        metadata:
+          name: ${schema.spec.name}-pod-identity
+          namespace: ${schema.metadata.namespace}
+        spec:
+          clusterName: ${schema.spec.clusterName}
+          namespace: ${schema.metadata.namespace}
+          serviceAccount: ${schema.spec.name}-sa
+          roleARN: ${iamrole.status.ackResourceMetadata.arn}
+    
+    # 5. SecretProviderClass for Secrets Manager
+    - id: secretprovider
+      template:
+        apiVersion: secrets-store.csi.x-k8s.io/v1
+        kind: SecretProviderClass
+        metadata:
+          name: ${schema.spec.name}-db-secret
+          namespace: ${schema.metadata.namespace}
+        spec:
+          provider: aws
+          parameters:
+            usePodIdentity: "true"
+            objects: |
+              - objectName: "${schema.spec.secretName}"
+                objectType: "secretsmanager"
+                jmesPath:
+                  - path: password
+                    objectAlias: password
+          secretObjects:
+            - secretName: ${schema.spec.name}-db-password
+              type: Opaque
+              data:
+                - objectName: password
+                  key: password
+    
+    # 6. ACK DB Subnet Group
+    - id: dbsubnetgroup
+      template:
+        apiVersion: rds.services.k8s.aws/v1alpha1
+        kind: DBSubnetGroup
+        metadata:
+          name: ${schema.spec.name}-db-subnet
+          namespace: ${schema.metadata.namespace}
+        spec:
+          name: ${schema.spec.name}-db-subnet
+          description: Subnet group for ${schema.spec.name}
+          subnetIDs: ${schema.spec.subnetIDs}
+    
+    # 7. ACK RDS MySQL Instance
+    - id: database
+      template:
+        apiVersion: rds.services.k8s.aws/v1alpha1
+        kind: DBInstance
+        metadata:
+          name: ${schema.spec.name}-db
+          namespace: ${schema.metadata.namespace}
+        spec:
+          allocatedStorage: ${schema.spec.storageSize}
+          dbInstanceClass: ${schema.spec.dbInstanceClass}
+          dbInstanceIdentifier: ${schema.spec.name}-mysql
+          engine: mysql
+          engineVersion: "8.0.40"
+          masterUsername: wordpress
+          masterUserPassword:
+            namespace: ${schema.metadata.namespace}
+            name: ${schema.spec.name}-db-password
+            key: password
+          dbSubnetGroupName: ${dbsubnetgroup.spec.name}
+          publiclyAccessible: false
+          storageEncrypted: true
+          backupRetentionPeriod: 7
+          dbName: wordpress
+    
+    # 8. K8s Secret with DB Connection Info
+    - id: dbconnection
+      template:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${schema.spec.name}-db-connection
+          namespace: ${schema.metadata.namespace}
+        type: Opaque
+        stringData:
+          WORDPRESS_DB_HOST: ${database.status.endpoint.address}
+          WORDPRESS_DB_PORT: "3306"
+          WORDPRESS_DB_NAME: "wordpress"
+          WORDPRESS_DB_USER: "wordpress"
+    
+    # 9. WordPress Deployment
+    - id: deployment
+      template:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ${schema.spec.name}
+          namespace: ${schema.metadata.namespace}
+          labels:
+            app: ${schema.spec.name}
+        spec:
+          replicas: ${schema.spec.replicas}
+          selector:
+            matchLabels:
+              app: ${schema.spec.name}
+          template:
+            metadata:
+              labels:
+                app: ${schema.spec.name}
+            spec:
+              serviceAccountName: ${schema.spec.name}-sa
+              containers:
+              - name: wordpress
+                image: wordpress:latest
+                ports:
+                - containerPort: 80
+                env:
+                - name: WORDPRESS_DB_HOST
+                  valueFrom:
+                    secretKeyRef:
+                      name: ${schema.spec.name}-db-connection
+                      key: WORDPRESS_DB_HOST
+                - name: WORDPRESS_DB_USER
+                  value: "wordpress"
+                - name: WORDPRESS_DB_NAME
+                  value: "wordpress"
+                command:
+                - /bin/bash
+                - -c
+                - |
+                  export WORDPRESS_DB_PASSWORD=$(cat /mnt/secrets-store/password)
+                  docker-entrypoint.sh apache2-foreground
+                volumeMounts:
+                - name: secrets-store
+                  mountPath: "/mnt/secrets-store"
+                  readOnly: true
+              volumes:
+              - name: secrets-store
+                csi:
+                  driver: secrets-store.csi.k8s.io
+                  readOnly: true
+                  volumeAttributes:
+                    secretProviderClass: ${schema.spec.name}-db-secret
+    
+    # 10. WordPress Service
+    - id: service
+      template:
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ${schema.spec.name}
+          namespace: ${schema.metadata.namespace}
+          labels:
+            app: ${schema.spec.name}
+        spec:
+          type: ClusterIP
+          selector:
+            app: ${schema.spec.name}
+          ports:
+          - port: 80
+            targetPort: 80
