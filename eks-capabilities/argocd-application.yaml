@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@awsgit:shawnawshk/reinvent-2025-sample.git
+    repoURL: https://github.com/shawnawshk/reinvent-2025-sample
     targetRevision: HEAD
     path: eks-capabilities/wordpress-demo/kro
   destination:
