@@ -4,8 +4,12 @@ This repository contains sample code and demonstrations from AWS re:Invent 2025.
 
 ## What's Included
 
+- **eks-capabilities** - Demo of EKS Capabilities featuring ArgoCD, ACK, and kro working together in a hub-and-spoke GitOps architecture. Includes a WordPress application that showcases all three capabilities managing AWS resources (IAM, RDS, Pod Identity) through a single custom Kubernetes API.
+
 - **lambda-durable-functions** - Sample implementation showcasing durable execution patterns with AWS Lambda
+
 - **lambda-managed-instances** - Demo of Lambda Managed Instances running functions on EC2 with serverless simplicity
+
 - **kiro-powers/serverless-dev** - Custom Kiro Power for AWS serverless development with SAM, providing instant expertise in Lambda, API Gateway, EventBridge, DynamoDB, and durable functions
 
 Each sample includes its own documentation and deployment instructions.
