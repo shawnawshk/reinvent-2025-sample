@@ -5,29 +5,29 @@ A multi-step AI research workflow demonstrating **Strands Agents** + **AWS Lambd
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Strands Research Agent                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Step 1: Research Agent (Strands + Bedrock Claude)             │
-│  └─> Gather comprehensive information on topic                 │
-│      • Checkpointed after completion                            │
-│      • 3x retry with exponential backoff                        │
-│                                                                 │
-│  Step 2: Analysis Agent (Strands + Bedrock Claude)             │
-│  └─> Analyze findings and extract insights                     │
-│      • Uses cached research from Step 1 on replay               │
-│      • 3x retry with exponential backoff                        │
-│                                                                 │
-│  [Optional] Wait (checkpoint demo)                              │
-│  └─> Function suspends, no compute charges                     │
-│                                                                 │
-│  Step 3: Summary Agent (Strands + Bedrock Claude)              │
-│  └─> Create comprehensive final report                         │
-│      • Uses cached research + analysis on replay                │
-│      • 3x retry with exponential backoff                        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│                    Strands Research Agent                      │
+├────────────────────────────────────────────────────────────────┤
+│                                                                │
+│  Step 1: Research Agent (Strands + Bedrock Claude)            │
+│  └─> Gather comprehensive information on topic                │
+│      • Checkpointed after completion                          │
+│      • 3x retry with exponential backoff                      │
+│                                                                │
+│  Step 2: Analysis Agent (Strands + Bedrock Claude)            │
+│  └─> Analyze findings and extract insights                    │
+│      • Uses cached research from Step 1 on replay             │
+│      • 3x retry with exponential backoff                      │
+│                                                                │
+│  [Optional] Wait (checkpoint demo)                            │
+│  └─> Function suspends, no compute charges                    │
+│                                                                │
+│  Step 3: Summary Agent (Strands + Bedrock Claude)             │
+│  └─> Create comprehensive final report                        │
+│      • Uses cached research + analysis on replay              │
+│      • 3x retry with exponential backoff                      │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ## Why This Pattern?
