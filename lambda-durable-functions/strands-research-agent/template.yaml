@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Strands Research Agent with Lambda Durable Functions
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures:
+      - arm64
+    Tracing: Active
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+    Tags:
+      Project: strands-research-agent
+      Environment: !Ref Environment
+
+Resources:
+  # Research Agent Function
+  ResearchAgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'strands-research-agent-${Environment}'
+      Handler: agent.lambda_handler
+      CodeUri: src/
+      MemorySize: 512
+      Timeout: 900  # 15 minutes max per invocation
+      AutoPublishAlias: live
+      DurableConfig:
+        ExecutionTimeout: 3600  # 1 hour for entire workflow
+        RetentionPeriodInDays: 7
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*'
+              - !Sub 'arn:aws:bedrock:us-*::foundation-model/*'
+        - Statement:
+          - Effect: Allow
+            Action:
+              - lambda:CheckpointDurableExecutions
+              - lambda:GetDurableExecutionState
+            Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:strands-research-agent-${Environment}:*'
+
+  # CloudWatch Alarm
+  ResearchAgentAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'strands-research-agent-${Environment}-errors'
+      AlarmDescription: Alarm when research agent has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ResearchAgentFunction
+
+Outputs:
+  FunctionArn:
+    Description: Research Agent Function ARN
+    Value: !GetAtt ResearchAgentFunction.Arn
+  FunctionAlias:
+    Description: Live alias for invocation
+    Value: !Sub '${ResearchAgentFunction.Arn}:live'
+  AlarmArn:
+    Description: CloudWatch Alarm ARN
+    Value: !GetAtt ResearchAgentAlarm.Arn

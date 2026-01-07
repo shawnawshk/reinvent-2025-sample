@@ -1,0 +1,3 @@
+aws-durable-execution-sdk-python
+strands-agents>=1.0.0
+boto3
